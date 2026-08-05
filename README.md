@@ -49,3 +49,31 @@ CLI is absent or not configured; it never starts an agent turn.
 
 Use `npm run format` to apply Prettier or `npm run format:check` to verify
 formatting without changing files.
+
+## Local diagnostic logs
+
+captain-slop writes structured JSON Lines diagnostic logs to
+`$XDG_DATA_HOME/captain-slop/logs` (normally
+`~/.local/share/captain-slop/logs`). These files are separate from saved
+session transcripts and stay on the local machine; the application has no
+telemetry or remote log transport.
+
+The default `info` level records timestamps, components, event names, and
+correlation metadata, but not prompts, message bodies, environment values,
+credentials, tokens, or full command output. Sensitive fields are redacted at
+the logger boundary. Logs rotate at 5 MiB, retain at most five files, and files
+older than seven days are removed.
+
+Temporarily enable local debug metadata with either
+`captain-slop --debug-logging` or `CAPTAIN_SLOP_LOG_LEVEL=debug captain-slop`.
+Debug logging is opt-in and uses the same redaction, rotation, and local-only
+storage rules.
+
+To attach a diagnostic bundle, first inspect the JSONL files for any contextual
+values you consider sensitive, remove or replace those records, then archive
+only the `logs` directory. Do not attach `state.json`, which contains session
+transcripts. For example:
+
+```bash
+tar -czf captain-slop-diagnostics.tar.gz -C "${XDG_DATA_HOME:-$HOME/.local/share}/captain-slop" logs
+```

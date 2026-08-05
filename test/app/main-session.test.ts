@@ -82,3 +82,43 @@ test("retention runs on startup and once per scheduled day", async () => {
   assert.deepEqual(calls, [10, 10]);
   assert.ok(timer);
 });
+
+test("main turns emit correlated metadata without message bodies", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
+  try {
+    const store = new LocalStore(join(dir, "state.json"));
+    await store.open();
+    const records: unknown[][] = [];
+    const logger = {
+      info: async (...args: unknown[]) => void records.push(args),
+      error: async (...args: unknown[]) => void records.push(args),
+      debug: async (...args: unknown[]) => void records.push(args),
+    };
+    const session = await MainSession.open(
+      store,
+      new FakeRuntime(),
+      profile,
+      () => 100,
+      undefined,
+      logger,
+    );
+    await session.send("do not log this message");
+
+    assert.deepEqual(
+      records.map((record) => record.slice(0, 2)),
+      [
+        ["main-turn", "turn.started"],
+        ["persistence", "event.appended"],
+        ["persistence", "event.appended"],
+        ["main-turn", "turn.completed"],
+      ],
+    );
+    const serialized = JSON.stringify(records);
+    assert.doesNotMatch(serialized, /do not log this message/);
+    assert.match(serialized, /correlationId/);
+    assert.match(serialized, /turnId/);
+    assert.match(serialized, /runtimeSessionId/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

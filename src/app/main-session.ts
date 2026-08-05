@@ -75,6 +75,13 @@ export class MainSession {
     return lines;
   }
 
+  workerEvents(): AgentEvent[] {
+    return this.persistence
+      .events(this.stored.id)
+      .map(({ event }) => event)
+      .filter((event) => event.type === "worker-started" || event.type === "worker-event");
+  }
+
   async send(message: string): Promise<void> {
     await this.record({ type: "user-message", text: message });
     await this.controller.send(message);
@@ -82,7 +89,9 @@ export class MainSession {
 
   private async record(event: AgentEvent): Promise<void> {
     const at = this.clock();
-    await this.persistence.appendEvent(this.stored.id, { at, agentId: "main", event });
+    const agentId =
+      event.type === "worker-started" || event.type === "worker-event" ? event.workerId : "main";
+    await this.persistence.appendEvent(this.stored.id, { at, agentId, event });
     this.stored.updatedAt = at;
     await this.persistence.saveSession(this.stored);
   }

@@ -10,6 +10,23 @@ export type AgentEvent =
   | { type: "approval-needed"; tool: ToolName; reason: string }
   | { type: "warning"; message: string }
   | { type: "worker-started"; workerId: string; name: string; startedAt: number }
+  | { type: "worker-event"; workerId: string; event: WorkerAgentEvent }
+  | {
+      type: "completed";
+      summary: string;
+      artifacts?: string[];
+      changes?: string[];
+      suggestedNextStep?: string;
+    }
+  | { type: "failed"; message: string };
+
+export type WorkerAgentEvent =
+  | { type: "text"; text: string }
+  | { type: "activity"; message: string }
+  | { type: "tool-requested"; tool: ToolName; reason: string }
+  | { type: "tool-started"; tool: ToolName }
+  | { type: "tool-finished"; tool: ToolName; result: string }
+  | { type: "warning"; message: string }
   | {
       type: "completed";
       summary: string;

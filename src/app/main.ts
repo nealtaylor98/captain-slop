@@ -73,6 +73,7 @@ async function run(): Promise<void> {
   });
   transcripts.set("main", session.transcript());
   view = new SupervisorViewModel(agents, transcripts);
+  for (const event of session.workerEvents()) view.handleRuntimeEvent(event);
   ui = new TerminalUi(view, (message) => {
     (transcripts.get("main") ?? []).push(`You: ${message}`);
     ui?.refresh();

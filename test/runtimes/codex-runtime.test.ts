@@ -104,10 +104,10 @@ test("Codex runtime yields events while the CLI process is still running", async
 });
 
 test("Codex runtime normalizes native subagent starts from the local rollout", async () => {
-  let observe: ((line: string) => void) | undefined;
+  const observed = new Map<string, (line: string) => void>();
   const observer: CodexRolloutObserver = {
-    observe: (_threadId, onLine) => {
-      observe = onLine;
+    observe: (threadId, onLine) => {
+      observed.set(threadId, onLine);
       return () => undefined;
     },
   };
@@ -120,7 +120,7 @@ test("Codex runtime normalizes native subagent starts from the local rollout", a
   await sessionStarted;
 
   const workerStarted = events.next();
-  observe?.(
+  observed.get("parent-thread")?.(
     JSON.stringify({
       type: "event_msg",
       payload: {
@@ -135,6 +135,38 @@ test("Codex runtime normalizes native subagent starts from the local rollout", a
   assert.deepEqual(await workerStarted, {
     done: false,
     value: { type: "worker-started", workerId: "worker-thread", name: "timer_one", startedAt: 123 },
+  });
+
+  const progress = events.next();
+  observed.get("worker-thread")?.(
+    JSON.stringify({
+      type: "event_msg",
+      payload: { type: "agent_message", message: "5 seconds", phase: "commentary" },
+    }),
+  );
+  assert.deepEqual(await progress, {
+    done: false,
+    value: {
+      type: "worker-event",
+      workerId: "worker-thread",
+      event: { type: "text", text: "5 seconds" },
+    },
+  });
+
+  const completed = events.next();
+  observed.get("worker-thread")?.(
+    JSON.stringify({
+      type: "event_msg",
+      payload: { type: "task_complete", last_agent_message: "timer done" },
+    }),
+  );
+  assert.deepEqual(await completed, {
+    done: false,
+    value: {
+      type: "worker-event",
+      workerId: "worker-thread",
+      event: { type: "completed", summary: "timer done" },
+    },
   });
   cli.processes[0].finish();
   await events.next();
@@ -167,6 +199,7 @@ test("Codex capabilities disclose that sandboxing is coarse and cannot enforce c
     enforcedTools: false,
     limitations: [
       "Codex CLI sandboxing is mapped coarsely (read-only or workspace-write); captain-slop cannot enforce individual allowedTools grants.",
+      "Native child progress is available only after Codex records it in the child's local rollout stream; events omitted by Codex cannot be displayed live.",
     ],
   });
 });

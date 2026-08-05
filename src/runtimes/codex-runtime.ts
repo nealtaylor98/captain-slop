@@ -9,6 +9,7 @@ import type {
   RuntimeCapabilities,
   RuntimeSession,
   SessionOptions,
+  WorkerAgentEvent,
 } from "./types.js";
 import type { ToolName } from "../domain/index.js";
 
@@ -53,7 +54,7 @@ interface SessionState {
   allowedTools: ToolName[];
   process?: CodexProcess;
   cancelled: boolean;
-  rolloutStop?: () => void;
+  rolloutStops: Map<string, () => void>;
   onRuntimeEvent?: (event: AgentEvent) => void;
 }
 export interface CodexRolloutObserver {
@@ -138,6 +139,54 @@ export function codexWorkerEventFromRolloutLine(line: string): AgentEvent | unde
   }
 }
 
+function codexChildEventFromRolloutLine(line: string): WorkerAgentEvent | undefined {
+  try {
+    const record = JSON.parse(line) as {
+      type?: string;
+      payload?: Record<string, unknown>;
+    };
+    const payload = record.payload ?? {};
+    if (record.type === "event_msg") {
+      if (payload.type === "agent_message" && typeof payload.message === "string")
+        return { type: "text", text: payload.message };
+      if (payload.type === "agent_reasoning" && typeof payload.text === "string")
+        return { type: "activity", message: payload.text };
+      if (payload.type === "task_complete")
+        return {
+          type: "completed",
+          summary:
+            typeof payload.last_agent_message === "string"
+              ? payload.last_agent_message
+              : "Worker completed.",
+        };
+      if (payload.type === "task_failed" || payload.type === "error")
+        return {
+          type: "failed",
+          message:
+            typeof payload.message === "string" ? payload.message : "Worker execution failed.",
+        };
+      if (payload.type === "warning" && typeof payload.message === "string")
+        return { type: "warning", message: payload.message };
+    }
+    if (record.type === "response_item") {
+      if (payload.type === "function_call")
+        return {
+          type: "tool-started",
+          tool: typeof payload.name === "string" ? payload.name : "tool",
+        };
+      if (payload.type === "function_call_output")
+        return {
+          type: "tool-finished",
+          tool: "tool",
+          result: typeof payload.output === "string" ? payload.output : "Tool call finished.",
+        };
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 class AsyncQueue<T> {
   private readonly values: T[] = [];
   private readonly readers: Array<(value: T) => void> = [];
@@ -178,6 +227,7 @@ export class CodexRuntime implements AgentRuntime {
       enforcedTools: false,
       limitations: [
         "Codex CLI sandboxing is mapped coarsely (read-only or workspace-write); captain-slop cannot enforce individual allowedTools grants.",
+        "Native child progress is available only after Codex records it in the child's local rollout stream; events omitted by Codex cannot be displayed live.",
       ],
     };
   }
@@ -189,6 +239,7 @@ export class CodexRuntime implements AgentRuntime {
       profileInstructions: options.profile.instructions,
       allowedTools: options.allowedTools ?? options.profile.allowedTools,
       cancelled: false,
+      rolloutStops: new Map(),
     });
     return { id, agentId: options.agentId };
   }
@@ -201,6 +252,7 @@ export class CodexRuntime implements AgentRuntime {
         profileInstructions: "",
         allowedTools: [],
         cancelled: false,
+        rolloutStops: new Map(),
       });
     return { id, agentId: "resumed" };
   }
@@ -248,8 +300,8 @@ export class CodexRuntime implements AgentRuntime {
         yield next;
       }
     } finally {
-      state.rolloutStop?.();
-      state.rolloutStop = undefined;
+      for (const stop of state.rolloutStops.values()) stop();
+      state.rolloutStops.clear();
       state.onRuntimeEvent = undefined;
       if (state.process === process) state.process = undefined;
     }
@@ -299,11 +351,28 @@ export class CodexRuntime implements AgentRuntime {
       session.id = event.thread_id;
       this.states.delete(oldId);
       this.states.set(session.id, state);
-      state.rolloutStop?.();
-      state.rolloutStop = this.rolloutObserver.observe(session.id, (line) => {
-        const workerEvent = codexWorkerEventFromRolloutLine(line);
-        if (workerEvent) state.onRuntimeEvent?.(workerEvent);
-      });
+      state.rolloutStops.get(session.id)?.();
+      state.rolloutStops.set(
+        session.id,
+        this.rolloutObserver.observe(session.id, (line) => {
+          const workerEvent = codexWorkerEventFromRolloutLine(line);
+          if (!workerEvent || workerEvent.type !== "worker-started") return;
+          state.onRuntimeEvent?.(workerEvent);
+          if (state.rolloutStops.has(workerEvent.workerId)) return;
+          state.rolloutStops.set(
+            workerEvent.workerId,
+            this.rolloutObserver.observe(workerEvent.workerId, (childLine) => {
+              const event = codexChildEventFromRolloutLine(childLine);
+              if (event)
+                state.onRuntimeEvent?.({
+                  type: "worker-event",
+                  workerId: workerEvent.workerId,
+                  event,
+                });
+            }),
+          );
+        }),
+      );
       events.push({ type: "activity", message: "Codex session started." });
       return;
     }

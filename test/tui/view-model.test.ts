@@ -111,6 +111,57 @@ test("native worker starts appear immediately in the agent sidebar", () => {
   assert.match(renderScreen(view.snapshot(), 80, 12), /timer_one #1/);
 });
 
+test("native worker events are buffered across selection changes and update status", () => {
+  const view = new SupervisorViewModel([agents[0]], new Map([["main", []]]));
+  view.handleRuntimeEvent({
+    type: "worker-started",
+    workerId: "native-worker",
+    name: "timer_one",
+    startedAt: 123,
+  });
+  for (const text of ["5 seconds", "10 seconds", "15 seconds", "20 seconds"])
+    view.handleRuntimeEvent({
+      type: "worker-event",
+      workerId: "native-worker",
+      event: { type: "text", text },
+    });
+  view.select("native-worker");
+  assert.deepEqual(view.snapshot().lines.slice(-4), [
+    "Worker: 5 seconds",
+    "Worker: 10 seconds",
+    "Worker: 15 seconds",
+    "Worker: 20 seconds",
+  ]);
+  view.select("main");
+  view.handleRuntimeEvent({
+    type: "worker-event",
+    workerId: "native-worker",
+    event: { type: "completed", summary: "timer done" },
+  });
+  view.select("native-worker");
+  assert.equal(view.snapshot().agents[1]?.status, "completed");
+  assert.equal(view.snapshot().lines.at(-1), "Completed: timer done");
+});
+
+test("native worker failures update status and remain inspection-only", () => {
+  const view = new SupervisorViewModel([agents[0]], new Map([["main", []]]));
+  view.handleRuntimeEvent({
+    type: "worker-started",
+    workerId: "native-worker",
+    name: "timer_one",
+    startedAt: 123,
+  });
+  view.handleRuntimeEvent({
+    type: "worker-event",
+    workerId: "native-worker",
+    event: { type: "failed", message: "timer failed" },
+  });
+  assert.equal(view.snapshot().agents[1]?.status, "failed");
+  assert.deepEqual(view.snapshot().lines, []);
+  view.select("native-worker");
+  assert.equal(view.snapshot().lines.at(-1), "Failed: timer failed");
+});
+
 test("long transcript messages wrap within the conversation pane", () => {
   const message =
     "This assistant response is deliberately long enough to continue onto another visible terminal row.";

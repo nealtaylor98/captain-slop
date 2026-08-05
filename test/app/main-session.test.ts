@@ -77,3 +77,50 @@ test("retention runs on startup and once per scheduled day", async () => {
   assert.deepEqual(calls, [10, 10]);
   assert.ok(timer);
 });
+
+test("reopening a session restores received native worker activity separately", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
+  try {
+    const path = join(dir, "state.json");
+    const firstStore = new LocalStore(path);
+    await firstStore.open();
+    const runtime = new FakeRuntime({
+      delegate: [
+        { type: "worker-started", workerId: "worker-thread", name: "timer", startedAt: 1 },
+        {
+          type: "worker-event",
+          workerId: "worker-thread",
+          event: { type: "text", text: "5 seconds" },
+        },
+        {
+          type: "worker-event",
+          workerId: "worker-thread",
+          event: { type: "completed", summary: "done" },
+        },
+        { type: "completed", summary: "main done" },
+      ],
+    });
+    const first = await MainSession.open(firstStore, runtime, profile, () => 100);
+    await first.send("delegate");
+
+    const restoredStore = new LocalStore(path);
+    await restoredStore.open();
+    const restored = await MainSession.open(restoredStore, runtime, profile, () => 200);
+    assert.deepEqual(restored.workerEvents(), [
+      { type: "worker-started", workerId: "worker-thread", name: "timer", startedAt: 1 },
+      {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "5 seconds" },
+      },
+      {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "completed", summary: "done" },
+      },
+    ]);
+    assert.deepEqual(restored.transcript(), ["You: delegate"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

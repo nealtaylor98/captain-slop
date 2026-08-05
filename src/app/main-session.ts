@@ -3,13 +3,20 @@ import type { AgentProfile } from "../domain/index.js";
 import type { AgentEvent, AgentRuntime } from "../runtimes/types.js";
 import type { Persistence, StoredSession } from "../storage/types.js";
 import { MainAgentController } from "./controller.js";
+import { correlationId, type LogContext } from "../observability/logger.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 type Clock = () => number;
 type IntervalScheduler = (callback: () => void, delay: number) => NodeJS.Timeout;
+interface LogSink {
+  info(component: string, event: string, context?: LogContext, data?: unknown): Promise<void>;
+  error(component: string, event: string, context?: LogContext, data?: unknown): Promise<void>;
+  debug(component: string, event: string, context?: LogContext, data?: unknown): Promise<void>;
+}
 
 export class MainSession {
   private readonly controller: MainAgentController;
+  private activeLogContext?: LogContext;
 
   private constructor(
     private readonly persistence: Persistence,
@@ -18,12 +25,13 @@ export class MainSession {
     profile: AgentProfile,
     private readonly clock: Clock,
     private readonly onEvent?: (event: AgentEvent) => unknown | Promise<unknown>,
+    private readonly logger?: LogSink,
   ) {
     this.controller = new MainAgentController(
       runtime,
       profile,
       async (event) => {
-        await this.record(event);
+        await this.record(event, this.activeLogContext);
         await this.onEvent?.(event);
       },
       stored.runtimeSessionId,
@@ -41,6 +49,7 @@ export class MainSession {
     profile: AgentProfile,
     clock: Clock = Date.now,
     onEvent?: (event: AgentEvent) => unknown | Promise<unknown>,
+    logger?: LogSink,
   ): Promise<MainSession> {
     let stored = persistence.latestSession();
     if (!stored) {
@@ -48,7 +57,7 @@ export class MainSession {
       stored = { id: randomUUID(), createdAt: now, updatedAt: now, mainAgentId: "main" };
       await persistence.saveSession(stored);
     }
-    return new MainSession(persistence, stored, runtime, profile, clock, onEvent);
+    return new MainSession(persistence, stored, runtime, profile, clock, onEvent, logger);
   }
 
   static async startRetention(
@@ -76,15 +85,46 @@ export class MainSession {
   }
 
   async send(message: string): Promise<void> {
-    await this.record({ type: "user-message", text: message });
-    await this.controller.send(message);
+    const context: LogContext = {
+      appSessionId: this.stored.id,
+      agentId: "main",
+      turnId: randomUUID(),
+      correlationId: correlationId(),
+    };
+    await this.logger?.info("main-turn", "turn.started", context);
+    this.activeLogContext = context;
+    try {
+      await this.record({ type: "user-message", text: message }, context);
+      await this.controller.send(message);
+      context.runtimeSessionId = this.controller.runtimeSessionId();
+      await this.logger?.info("main-turn", "turn.completed", context);
+    } catch (error) {
+      context.runtimeSessionId = this.controller.runtimeSessionId();
+      await this.logger?.error("main-turn", "turn.failed", context, {
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      });
+      throw error;
+    } finally {
+      this.activeLogContext = undefined;
+    }
   }
 
-  private async record(event: AgentEvent): Promise<void> {
+  private async record(event: AgentEvent, context?: LogContext): Promise<void> {
     const at = this.clock();
     await this.persistence.appendEvent(this.stored.id, { at, agentId: "main", event });
     this.stored.updatedAt = at;
     await this.persistence.saveSession(this.stored);
+    await this.logger?.debug(
+      "persistence",
+      "event.appended",
+      {
+        appSessionId: this.stored.id,
+        agentId: "main",
+        runtimeSessionId: this.controller.runtimeSessionId(),
+        ...context,
+      },
+      { eventType: event.type },
+    );
   }
 }
 

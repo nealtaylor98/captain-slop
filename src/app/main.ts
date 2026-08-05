@@ -15,6 +15,8 @@ import { defaultMainProfile } from "./defaults.js";
 import { initialAgents, initialTranscripts } from "./initial-view.js";
 import { MainSession } from "./main-session.js";
 import { ensureDataDirectory } from "./data-directory.js";
+import { JsonLinesLogger } from "../observability/logger.js";
+import { logLevel } from "../observability/config.js";
 
 const demoProfile = {
   id: "main",
@@ -38,9 +40,27 @@ async function run(): Promise<void> {
   }
   const dataDir = process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share");
   const productDataDir = await ensureDataDirectory(dataDir);
+  const logger = new JsonLinesLogger({
+    directory: join(productDataDir, "logs"),
+    level: logLevel(),
+    onFailure: () => {
+      // Observability must never make the application unavailable.
+    },
+  });
+  await logger.info(
+    "application",
+    "application.started",
+    {},
+    {
+      debugLogging: logLevel() === "debug",
+      demo,
+    },
+  );
   const store = new LocalStore(join(productDataDir, "state.json"));
   await store.open();
+  await logger.info("persistence", "store.opened");
   await MainSession.startRetention(store);
+  await logger.info("persistence", "retention.completed");
   let profile = demo ? demoProfile : defaultMainProfile();
   let runtime: AgentRuntime = demo
     ? new FakeRuntime()
@@ -65,12 +85,19 @@ async function run(): Promise<void> {
   const transcripts = initialTranscripts(demo);
   let ui: TerminalUi | undefined;
   let view: SupervisorViewModel;
-  const session = await MainSession.open(store, runtime, profile, Date.now, (event) => {
-    view.handleRuntimeEvent(event);
-    const line = mainChatLine(event);
-    if (line) (transcripts.get("main") ?? []).push(line);
-    ui?.refresh();
-  });
+  const session = await MainSession.open(
+    store,
+    runtime,
+    profile,
+    Date.now,
+    (event) => {
+      view.handleRuntimeEvent(event);
+      const line = mainChatLine(event);
+      if (line) (transcripts.get("main") ?? []).push(line);
+      ui?.refresh();
+    },
+    logger,
+  );
   transcripts.set("main", session.transcript());
   view = new SupervisorViewModel(agents, transcripts);
   ui = new TerminalUi(view, (message) => {

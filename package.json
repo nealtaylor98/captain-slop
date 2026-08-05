@@ -10,13 +10,16 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/test/**/*.test.js",
     "check": "tsc -p tsconfig.json --noEmit",
-    "lint": "npm run check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run check && npm run format:check",
     "start": "npm run build && node dist/src/app/main.js",
     "demo": "npm run build && node dist/src/app/main.js --demo",
     "smoke:codex": "npm run build && node dist/src/app/main.js --codex-smoke"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "prettier": "^3.9.6",
     "typescript": "^7.0.2"
   }
 }

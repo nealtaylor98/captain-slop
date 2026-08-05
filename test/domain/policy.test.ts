@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { effectiveTools, requestPolicyChange, transitionStatus, PolicyManager } from "../../src/domain/index.js";
+import {
+  effectiveTools,
+  requestPolicyChange,
+  transitionStatus,
+  PolicyManager,
+} from "../../src/domain/index.js";
 
 test("effective permissions combine baseline, profile and explicitly approved task grants", () => {
   const tools = effectiveTools(["read_file"], ["search_files"], ["shell"]);

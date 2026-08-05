@@ -6,7 +6,8 @@ export function defaultMainProfile(): AgentProfile {
     id: "main",
     provider: "codex",
     model: "",
-    instructions: "You are the main coding supervisor. Respond directly to the user and clearly report progress and results.",
-    allowedTools: ["read_file", "search_files", "workspace_write", "shell", "git"]
+    instructions:
+      "You are the main coding supervisor. Respond directly to the user and clearly report progress and results.",
+    allowedTools: ["read_file", "search_files", "workspace_write", "shell", "git"],
   };
 }

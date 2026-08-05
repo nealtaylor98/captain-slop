@@ -1,6 +1,7 @@
 import type { AgentProfile, ToolName } from "../domain/index.js";
 
 export type AgentEvent =
+  | { type: "user-message"; text: string }
   | { type: "text"; text: string }
   | { type: "activity"; message: string }
   | { type: "tool-requested"; tool: ToolName; reason: string }
@@ -9,12 +10,28 @@ export type AgentEvent =
   | { type: "approval-needed"; tool: ToolName; reason: string }
   | { type: "warning"; message: string }
   | { type: "worker-started"; workerId: string; name: string; startedAt: number }
-  | { type: "completed"; summary: string; artifacts?: string[]; changes?: string[]; suggestedNextStep?: string }
+  | {
+      type: "completed";
+      summary: string;
+      artifacts?: string[];
+      changes?: string[];
+      suggestedNextStep?: string;
+    }
   | { type: "failed"; message: string };
 
-export interface RuntimeSession { id: string; agentId: string; }
-export interface RuntimeCapabilities { enforcedTools: boolean; limitations: string[]; }
-export interface SessionOptions { agentId: string; profile: AgentProfile; allowedTools?: ToolName[]; }
+export interface RuntimeSession {
+  id: string;
+  agentId: string;
+}
+export interface RuntimeCapabilities {
+  enforcedTools: boolean;
+  limitations: string[];
+}
+export interface SessionOptions {
+  agentId: string;
+  profile: AgentProfile;
+  allowedTools?: ToolName[];
+}
 export interface AgentRuntime {
   createSession(options: SessionOptions): Promise<RuntimeSession>;
   resumeSession(id: string): Promise<RuntimeSession>;

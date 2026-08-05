@@ -24,6 +24,11 @@ CLI login and its account-selected default model—no configuration file is
 needed. Typing and Enter sends a message to the main agent. Press Ctrl-C or
 Escape to exit.
 
+The main conversation and its provider thread ID are saved locally after each
+event. Restarting `tcode` restores the transcript and continues the same
+provider thread on the next message. A startup retention check and daily job
+remove conversations that have been inactive for more than 30 days.
+
 `npm run demo` is the explicit fake-runtime layout preview for development and
 tests; in a non-interactive shell it prints deterministically.
 
@@ -39,3 +44,6 @@ that limitation is reported through runtime capabilities before use.
 `npm run smoke:codex` is an explicit, non-sending readiness check: it only
 prints the installed CLI version and local login status. It fails if the local
 CLI is absent or not configured; it never starts an agent turn.
+
+Use `npm run format` to apply Prettier or `npm run format:check` to verify
+formatting without changing files.

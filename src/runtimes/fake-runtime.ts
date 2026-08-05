@@ -1,4 +1,10 @@
-import type { AgentRuntime, AgentEvent, RuntimeCapabilities, RuntimeSession, SessionOptions } from "./types.js";
+import type {
+  AgentRuntime,
+  AgentEvent,
+  RuntimeCapabilities,
+  RuntimeSession,
+  SessionOptions,
+} from "./types.js";
 
 export class FakeRuntime implements AgentRuntime {
   private nextId = 1;
@@ -15,8 +21,13 @@ export class FakeRuntime implements AgentRuntime {
     return session;
   }
   async *send(_session: RuntimeSession, message: string): AsyncIterable<AgentEvent> {
-    for (const event of this.scripts[message] ?? [{ type: "completed", summary: `Fake completed: ${message}` }]) yield event;
+    for (const event of this.scripts[message] ?? [
+      { type: "completed", summary: `Fake completed: ${message}` },
+    ])
+      yield event;
   }
   async cancel(_session: RuntimeSession): Promise<void> {}
-  capabilities(): RuntimeCapabilities { return { enforcedTools: true, limitations: [] }; }
+  capabilities(): RuntimeCapabilities {
+    return { enforcedTools: true, limitations: [] };
+  }
 }

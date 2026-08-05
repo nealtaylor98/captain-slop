@@ -1,5 +1,9 @@
 # tcode
 
+> **Vibe-coded work in progress:** this project is experimental, incomplete,
+> and probably does not work yet. Expect bugs, missing features, and breaking
+> changes.
+
 `tcode` is a Linux terminal supervisor for coding agents. It keeps one main
 agent available for the user while it delegates independent work to background
 agent sessions. Providers such as Codex and Claude plug into the same UI,

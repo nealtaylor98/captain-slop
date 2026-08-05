@@ -10,7 +10,7 @@ import { LocalStore } from "../../src/storage/local-store.js";
 const profile = { id: "main", provider: "fake", model: "demo", instructions: "", allowedTools: [] };
 
 test("main session persists user and streamed assistant messages and resumes the runtime", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const path = join(dir, "state.json");
     const firstStore = new LocalStore(path);
@@ -36,7 +36,7 @@ test("main session persists user and streamed assistant messages and resumes the
 });
 
 test("restored transcript starts with its compaction summary", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const store = new LocalStore(join(dir, "state.json"));
     await store.open();

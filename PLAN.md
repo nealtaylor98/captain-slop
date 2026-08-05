@@ -1,4 +1,4 @@
-# tcode implementation plan
+# captain-slop implementation plan
 
 ## Product outcome
 
@@ -18,14 +18,14 @@ targets; the UI, policies, and stored sessions must not depend on either one.
   is required.
 
 Provider runtimes supply agent threads, model inference, and provider-native
-capabilities. tcode owns orchestration, presentation, local persistence, and
+capabilities. captain-slop owns orchestration, presentation, local persistence, and
 the policy layer. Codex is a suitable first adapter because its SDK supports
 local threads and event streaming; it must not become an architectural
 dependency of the rest of the application. See the official [Codex SDK documentation](https://learn.chatgpt.com/docs/codex-sdk.md).
 
 ## User experience — the original supervisor layout
 
-tcode owns the entire terminal screen. It is not a small extension beneath the
+captain-slop owns the entire terminal screen. It is not a small extension beneath the
 Codex composer and does not try to modify Codex's native toolbar. Its primary
 layout is the original two-column workspace:
 
@@ -103,7 +103,7 @@ interface AgentRuntime {
 }
 ```
 
-`AgentEvent` is a tcode-owned normalized stream: text, reasoning status, tool
+`AgentEvent` is a captain-slop-owned normalized stream: text, reasoning status, tool
 requested/started/finished, approval needed, usage, warning, completed, and
 failed. The sidebar, transcript renderer, scheduler, database, and policy
 engine consume these neutral events—not provider-specific formats.
@@ -123,7 +123,7 @@ model = "gpt-5.6"
 allowed = ["workspace_write", "shell", "git"]
 ```
 
-Credentials remain local and out of tcode's session database. A named
+Credentials remain local and out of captain-slop's session database. A named
 connection uses the provider's supported local authentication method or a
 user-configured secret reference. Work and personal credentials are separate
 connections that profiles select by name.
@@ -144,7 +144,7 @@ effective tools = global tool baseline ∪ agent-profile grants ∪ approved tas
 - Any new privilege request must be surfaced to the user; neither the main
   agent nor a worker can self-approve it.
 - The user can ask the main agent to update the global policy or a profile's
-  policy. tcode presents the proposed change and requires confirmation before
+  policy. captain-slop presents the proposed change and requires confirmation before
   saving it.
 
 Example configuration:
@@ -167,10 +167,10 @@ instructions = "Make a scoped change and validate it."
 ```
 
 The policy engine is provider-neutral. For runtimes with native sandboxing,
-tcode maps effective permissions to the least-privileged runtime configuration.
-For runtimes that call local tools through tcode, its tool runner enforces the
+captain-slop maps effective permissions to the least-privileged runtime configuration.
+For runtimes that call local tools through captain-slop, its tool runner enforces the
 policy directly. An adapter must declare any capability it cannot enforce, and
-tcode must show that limitation before the user starts the agent.
+captain-slop must show that limitation before the user starts the agent.
 
 ## Data and retention
 
@@ -179,7 +179,7 @@ tcode must show that limitation before the user starts the agent.
 - Compact older transcripts into a main-thread summary plus worker reports.
 - Delete sessions, logs, and stored artifacts after 30 days using a startup
   check plus a daily cleanup timer.
-- Do not send session data to a tcode-operated service. Each provider uses the
+- Do not send session data to a captain-slop-operated service. Each provider uses the
   authentication and data-handling path chosen for its named local connection.
 
 ## Delivery phases
@@ -205,7 +205,7 @@ session and store a completed exchange in SQLite.
 - Save/reopen sessions and render message history.
 - Add transcript compaction primitives and the 30-day deletion job.
 
-**Exit condition:** A user can close and reopen tcode without losing an active
+**Exit condition:** A user can close and reopen captain-slop without losing an active
 main-agent conversation.
 
 ### Phase 2 — background workers and second provider (7–10 days)
@@ -276,7 +276,7 @@ provider installations/connections, and no remote sync or team features.
 - The main agent is the sole user-facing agent.
 - Start with read-heavy parallelism. Restrict concurrent write-capable workers
   to one workspace until Git worktree isolation is added.
-- Do not attempt to modify Codex's own native toolbar; tcode provides its own
+- Do not attempt to modify Codex's own native toolbar; captain-slop provides its own
   TUI around Codex.
 
 ## First build decision

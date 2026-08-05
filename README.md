@@ -1,10 +1,10 @@
-# tcode
+# captain-slop
 
 > **Vibe-coded work in progress:** this project is experimental, incomplete,
 > and probably does not work yet. Expect bugs, missing features, and breaking
 > changes.
 
-`tcode` is a Linux terminal supervisor for coding agents. It keeps one main
+`captain-slop` is a Linux terminal supervisor for coding agents. It keeps one main
 agent available for the user while it delegates independent work to background
 agent sessions. Providers such as Codex and Claude plug into the same UI,
 policy, and local-session model.
@@ -25,7 +25,7 @@ needed. Typing and Enter sends a message to the main agent. Press Ctrl-C or
 Escape to exit.
 
 The main conversation and its provider thread ID are saved locally after each
-event. Restarting `tcode` restores the transcript and continues the same
+event. Restarting `captain-slop` restores the transcript and continues the same
 provider thread on the next message. A startup retention check and daily job
 remove conversations that have been inactive for more than 30 days.
 
@@ -35,10 +35,10 @@ tests; in a non-interactive shell it prints deterministically.
 The Codex adapter uses an already-installed and configured local `codex` CLI;
 it does not authenticate or set up credentials. Configuration is optional: a
 `[profiles.main]` entry can override the default with
-`node dist/src/app/main.js --config path/to/tcode.toml`.
+`node dist/src/app/main.js --config path/to/captain-slop.toml`.
 
 Codex maps `workspace_write` to its `workspace-write` sandbox and all other
-profiles to `read-only`. It cannot enforce individual tcode tool grants, so
+profiles to `read-only`. It cannot enforce individual captain-slop tool grants, so
 that limitation is reported through runtime capabilities before use.
 
 `npm run smoke:codex` is an explicit, non-sending readiness check: it only

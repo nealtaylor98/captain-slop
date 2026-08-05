@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +14,7 @@ import { codexSmoke } from "./codex-smoke.js";
 import { defaultMainProfile } from "./defaults.js";
 import { initialAgents, initialTranscripts } from "./initial-view.js";
 import { MainSession } from "./main-session.js";
+import { ensureDataDirectory } from "./data-directory.js";
 
 const demoProfile = {
   id: "main",
@@ -36,8 +37,8 @@ async function run(): Promise<void> {
     return;
   }
   const dataDir = process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share");
-  await mkdir(join(dataDir, "tcode"), { recursive: true });
-  const store = new LocalStore(join(dataDir, "tcode", "state.json"));
+  const productDataDir = await ensureDataDirectory(dataDir);
+  const store = new LocalStore(join(productDataDir, "state.json"));
   await store.open();
   await MainSession.startRetention(store);
   let profile = demo ? demoProfile : defaultMainProfile();

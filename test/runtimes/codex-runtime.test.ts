@@ -161,12 +161,12 @@ test("Codex runtime resumes native sessions and cancellation terminates the acti
   assert.equal(cli.processes[0].killed, true);
 });
 
-test("Codex capabilities disclose that sandboxing is coarse and cannot enforce tcode tool grants", () => {
+test("Codex capabilities disclose that sandboxing is coarse and cannot enforce captain-slop tool grants", () => {
   const runtime = new CodexRuntime({ cli: new FakeCodexCli() });
   assert.deepEqual(runtime.capabilities(), {
     enforcedTools: false,
     limitations: [
-      "Codex CLI sandboxing is mapped coarsely (read-only or workspace-write); tcode cannot enforce individual allowedTools grants.",
+      "Codex CLI sandboxing is mapped coarsely (read-only or workspace-write); captain-slop cannot enforce individual allowedTools grants.",
     ],
   });
 });

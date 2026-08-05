@@ -2,9 +2,9 @@
 
 ## Scope and architecture
 
-- `tcode` is a standalone Linux terminal supervisor, not a Codex TUI plugin.
+- `captain-slop` is a standalone Linux terminal supervisor, not a Codex TUI plugin.
 - Keep provider-specific code inside `src/runtimes/`. Domain, scheduler,
-  storage, policy, and TUI code must use only tcode-owned neutral types.
+  storage, policy, and TUI code must use only captain-slop-owned neutral types.
 - Preserve the main-agent-only user input model. Worker panes are inspection
   views; workers return structured reports to the main agent.
 - Keep dependencies small. Prefer built-in Node facilities and TypeScript.

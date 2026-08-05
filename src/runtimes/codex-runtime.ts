@@ -177,7 +177,7 @@ export class CodexRuntime implements AgentRuntime {
     return {
       enforcedTools: false,
       limitations: [
-        "Codex CLI sandboxing is mapped coarsely (read-only or workspace-write); tcode cannot enforce individual allowedTools grants.",
+        "Codex CLI sandboxing is mapped coarsely (read-only or workspace-write); captain-slop cannot enforce individual allowedTools grants.",
       ],
     };
   }

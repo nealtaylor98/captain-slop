@@ -11,7 +11,7 @@ export class TerminalUi {
   ) {}
   start(): void {
     if (!process.stdin.isTTY || !process.stdout.isTTY)
-      throw new Error("tcode requires an interactive Linux terminal.");
+      throw new Error("captain-slop requires an interactive Linux terminal.");
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdout.write("\x1b[?1049h\x1b[?1000h\x1b[?1006h\x1b[2J");

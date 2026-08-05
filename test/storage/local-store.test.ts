@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { LocalStore } from "../../src/storage/local-store.js";
 
 test("local store persists sessions, events and reports", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const store = new LocalStore(join(dir, "state.json"));
     await store.open();
@@ -34,7 +34,7 @@ test("local store persists sessions, events and reports", async () => {
 });
 
 test("retention removes sessions and their event streams older than thirty days", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const store = new LocalStore(join(dir, "state.json"));
     await store.open();
@@ -58,7 +58,7 @@ test("retention removes sessions and their event streams older than thirty days"
 });
 
 test("concurrent event appends are serialized without competing temporary-file renames", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const store = new LocalStore(join(dir, "state.json"));
     await store.open();
@@ -75,7 +75,7 @@ test("concurrent event appends are serialized without competing temporary-file r
 });
 
 test("latest session can be reopened with its runtime thread and transcript", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const path = join(dir, "state.json");
     const store = new LocalStore(path);
@@ -105,7 +105,7 @@ test("latest session can be reopened with its runtime thread and transcript", as
 });
 
 test("compaction replaces older events with a durable summary", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "tcode-"));
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {
     const path = join(dir, "state.json");
     const store = new LocalStore(path);

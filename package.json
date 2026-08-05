@@ -1,10 +1,10 @@
 {
-  "name": "tcode",
+  "name": "captain-slop",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "tcode": "dist/src/app/main.js"
+    "captain-slop": "dist/src/app/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

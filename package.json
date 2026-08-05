@@ -1,0 +1,22 @@
+{
+  "name": "tcode",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tcode": "dist/src/app/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/**/*.test.js",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "npm run check",
+    "start": "npm run build && node dist/src/app/main.js",
+    "demo": "npm run build && node dist/src/app/main.js --demo",
+    "smoke:codex": "npm run build && node dist/src/app/main.js --codex-smoke"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2"
+  }
+}

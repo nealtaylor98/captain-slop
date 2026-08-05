@@ -1,0 +1,59 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.lcov
+
+# Runtime state and local databases
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+state.json
+
+# Environment files and local configuration
+.env
+.env.*
+!.env.example
+*.local
+*.local.toml
+*.local.json
+
+# Credentials, tokens, and private keys
+credentials.json
+secrets.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+.npmrc
+.netrc
+
+# Agent/provider local state
+.codex/
+.agents/
+
+# Logs, temporary files, and crash dumps
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*.pid
+core
+core.*
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

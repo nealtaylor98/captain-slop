@@ -187,6 +187,14 @@ function codexChildEventFromRolloutLine(line: string): WorkerAgentEvent | undefi
   return undefined;
 }
 
+function isCodexChildTurnStart(line: string): boolean {
+  try {
+    return (JSON.parse(line) as { type?: string }).type === "inter_agent_communication_metadata";
+  } catch {
+    return false;
+  }
+}
+
 class AsyncQueue<T> {
   private readonly values: T[] = [];
   private readonly readers: Array<(value: T) => void> = [];
@@ -359,9 +367,15 @@ export class CodexRuntime implements AgentRuntime {
           if (!workerEvent || workerEvent.type !== "worker-started") return;
           state.onRuntimeEvent?.(workerEvent);
           if (state.rolloutStops.has(workerEvent.workerId)) return;
+          let childTurnStarted = false;
           state.rolloutStops.set(
             workerEvent.workerId,
             this.rolloutObserver.observe(workerEvent.workerId, (childLine) => {
+              if (isCodexChildTurnStart(childLine)) {
+                childTurnStarted = true;
+                return;
+              }
+              if (!childTurnStarted) return;
               const event = codexChildEventFromRolloutLine(childLine);
               if (event)
                 state.onRuntimeEvent?.({

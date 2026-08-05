@@ -141,6 +141,19 @@ test("Codex runtime normalizes native subagent starts from the local rollout", a
   observed.get("worker-thread")?.(
     JSON.stringify({
       type: "event_msg",
+      payload: {
+        type: "agent_message",
+        message: "Main-agent history inherited by the worker rollout",
+        phase: "commentary",
+      },
+    }),
+  );
+  observed.get("worker-thread")?.(
+    JSON.stringify({ type: "inter_agent_communication_metadata", payload: { trigger_turn: {} } }),
+  );
+  observed.get("worker-thread")?.(
+    JSON.stringify({
+      type: "event_msg",
       payload: { type: "agent_message", message: "5 seconds", phase: "commentary" },
     }),
   );

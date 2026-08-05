@@ -9,7 +9,9 @@ agent available for the user while it delegates independent work to background
 agent sessions. Providers such as Codex and Claude plug into the same UI,
 policy, and local-session model.
 
-See [PLAN.md](PLAN.md) for the implementation plan.
+See [PLAN.md](PLAN.md) for the implementation plan and
+[docs/terminal-interface-design.md](docs/terminal-interface-design.md) for the
+evaluated Phase 3 interface directions.
 
 ## Run
 

@@ -27,7 +27,10 @@ test("main session persists user and streamed assistant messages and resumes the
     const secondStore = new LocalStore(path);
     await secondStore.open();
     const reopened = await MainSession.open(secondStore, runtime, profile, () => 200);
-    assert.deepEqual(reopened.transcript(), ["You: hello", "Assistant: hi back"]);
+    assert.deepEqual(reopened.transcript(), [
+      { kind: "user", text: "hello" },
+      { kind: "agent", text: "hi back" },
+    ]);
     await reopened.send("continue");
     assert.equal(secondStore.latestSession()?.runtimeSessionId, "fake-1");
   } finally {
@@ -48,7 +51,9 @@ test("restored transcript starts with its compaction summary", async () => {
       compaction: { compactedAt: 2, summary: "We previously fixed login." },
     });
     const session = await MainSession.open(store, new FakeRuntime(), profile);
-    assert.deepEqual(session.transcript(), ["Conversation summary: We previously fixed login."]);
+    assert.deepEqual(session.transcript(), [
+      { kind: "status", text: "Conversation summary: We previously fixed login." },
+    ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -119,7 +124,47 @@ test("reopening a session restores received native worker activity separately", 
         event: { type: "completed", summary: "done" },
       },
     ]);
-    assert.deepEqual(restored.transcript(), ["You: delegate"]);
+    assert.deepEqual(restored.transcript(), [{ kind: "user", text: "delegate" }]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("main turns emit correlated metadata without message bodies", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
+  try {
+    const store = new LocalStore(join(dir, "state.json"));
+    await store.open();
+    const records: unknown[][] = [];
+    const logger = {
+      info: async (...args: unknown[]) => void records.push(args),
+      error: async (...args: unknown[]) => void records.push(args),
+      debug: async (...args: unknown[]) => void records.push(args),
+    };
+    const session = await MainSession.open(
+      store,
+      new FakeRuntime(),
+      profile,
+      () => 100,
+      undefined,
+      logger,
+    );
+    await session.send("do not log this message");
+
+    assert.deepEqual(
+      records.map((record) => record.slice(0, 2)),
+      [
+        ["main-turn", "turn.started"],
+        ["persistence", "event.appended"],
+        ["persistence", "event.appended"],
+        ["main-turn", "turn.completed"],
+      ],
+    );
+    const serialized = JSON.stringify(records);
+    assert.doesNotMatch(serialized, /do not log this message/);
+    assert.match(serialized, /correlationId/);
+    assert.match(serialized, /turnId/);
+    assert.match(serialized, /runtimeSessionId/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

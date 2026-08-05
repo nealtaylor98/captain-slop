@@ -13,6 +13,10 @@ See [PLAN.md](PLAN.md) for the implementation plan and
 [docs/terminal-interface-design.md](docs/terminal-interface-design.md) for the
 evaluated Phase 3 interface directions.
 
+## Interface preview
+
+![Worker inspection view](worker%20agent%20main%20window.png)
+
 ## Run
 
 ```bash

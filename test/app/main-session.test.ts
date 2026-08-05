@@ -130,6 +130,61 @@ test("reopening a session restores received native worker activity separately", 
   }
 });
 
+test("restored worker activity excludes main replies inherited by old child rollouts", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
+  try {
+    const store = new LocalStore(join(dir, "state.json"));
+    await store.open();
+    const session = await MainSession.open(store, new FakeRuntime(), profile, () => 100);
+    const stored = store.latestSession();
+    assert.ok(stored);
+    await store.appendEvent(stored.id, {
+      at: 1,
+      agentId: "main",
+      event: { type: "text", text: "Hello! What would you like to work on?" },
+    });
+    await store.appendEvent(stored.id, {
+      at: 2,
+      agentId: "worker-thread",
+      event: {
+        type: "worker-started",
+        workerId: "worker-thread",
+        name: "timer",
+        startedAt: 2,
+      },
+    });
+    await store.appendEvent(stored.id, {
+      at: 3,
+      agentId: "worker-thread",
+      event: {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "Hello! What would you like to work on?" },
+      },
+    });
+    await store.appendEvent(stored.id, {
+      at: 4,
+      agentId: "worker-thread",
+      event: {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "Uptime: approximately 5 seconds." },
+      },
+    });
+
+    assert.deepEqual(session.workerEvents(), [
+      { type: "worker-started", workerId: "worker-thread", name: "timer", startedAt: 2 },
+      {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "Uptime: approximately 5 seconds." },
+      },
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("main turns emit correlated metadata without message bodies", async () => {
   const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {

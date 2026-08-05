@@ -86,10 +86,27 @@ export class MainSession {
   }
 
   workerEvents(): AgentEvent[] {
-    return this.persistence
-      .events(this.stored.id)
-      .map(({ event }) => event)
-      .filter((event) => event.type === "worker-started" || event.type === "worker-event");
+    const earlierMainReplies = new Set<string>();
+    const workerEvents: AgentEvent[] = [];
+    for (const { event } of this.persistence.events(this.stored.id)) {
+      if (event.type === "text") {
+        earlierMainReplies.add(event.text);
+        continue;
+      }
+      if (event.type === "worker-started") {
+        workerEvents.push(event);
+        continue;
+      }
+      if (event.type !== "worker-event") continue;
+      const text =
+        event.event.type === "text"
+          ? event.event.text
+          : event.event.type === "completed"
+            ? event.event.summary
+            : undefined;
+      if (!text || !earlierMainReplies.has(text)) workerEvents.push(event);
+    }
+    return workerEvents;
   }
 
   async send(message: string): Promise<void> {

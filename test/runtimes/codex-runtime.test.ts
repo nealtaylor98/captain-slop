@@ -154,6 +154,12 @@ test("Codex runtime normalizes native subagent starts from the local rollout", a
   observed.get("worker-thread")?.(
     JSON.stringify({
       type: "event_msg",
+      payload: { type: "agent_message", message: "timer done", phase: "final_answer" },
+    }),
+  );
+  observed.get("worker-thread")?.(
+    JSON.stringify({
+      type: "event_msg",
       payload: { type: "agent_message", message: "5 seconds", phase: "commentary" },
     }),
   );

@@ -147,7 +147,11 @@ function codexChildEventFromRolloutLine(line: string): WorkerAgentEvent | undefi
     };
     const payload = record.payload ?? {};
     if (record.type === "event_msg") {
-      if (payload.type === "agent_message" && typeof payload.message === "string")
+      if (
+        payload.type === "agent_message" &&
+        payload.phase === "commentary" &&
+        typeof payload.message === "string"
+      )
         return { type: "text", text: payload.message };
       if (payload.type === "agent_reasoning" && typeof payload.text === "string")
         return { type: "activity", message: payload.text };

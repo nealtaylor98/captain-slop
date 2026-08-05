@@ -61,11 +61,14 @@ test("rendered input replaces the placeholder when the user has started typing",
 });
 
 test("main chat renders assistant replies without runtime activity or completion noise", () => {
-  assert.equal(mainChatLine({ type: "text", text: "I fixed it." }), "Assistant: I fixed it.");
-  assert.equal(
-    mainChatLine({ type: "failed", message: "The turn failed." }),
-    "Assistant error: The turn failed.",
-  );
+  assert.deepEqual(mainChatLine({ type: "text", text: "I fixed it." }), {
+    kind: "agent",
+    text: "I fixed it.",
+  });
+  assert.deepEqual(mainChatLine({ type: "failed", message: "The turn failed." }), {
+    kind: "status",
+    text: "Error: The turn failed.",
+  });
   assert.equal(mainChatLine({ type: "activity", message: "Codex is reasoning." }), undefined);
   assert.equal(mainChatLine({ type: "tool-started", tool: "shell" }), undefined);
   assert.equal(
@@ -114,10 +117,49 @@ test("native worker starts appear immediately in the agent sidebar", () => {
 test("long transcript messages wrap within the conversation pane", () => {
   const message =
     "This assistant response is deliberately long enough to continue onto another visible terminal row.";
-  const view = new SupervisorViewModel([agents[0]], new Map([["main", [message]]]));
+  const view = new SupervisorViewModel(
+    [agents[0]],
+    new Map([["main", [{ kind: "agent" as const, text: message }]]]),
+  );
   const screen = renderScreen(view.snapshot(), 50, 12);
   assert.match(screen, /This assistant response is/);
   assert.match(screen, /deliberately long enough/);
   assert.match(screen, /continue onto another/);
-  assert.match(screen, /visible terminal row/);
+  assert.match(screen, /terminal row/);
+});
+
+test("main chat distinguishes speakers by alignment without visible labels", () => {
+  const view = new SupervisorViewModel(
+    [agents[0]],
+    new Map([
+      [
+        "main",
+        [
+          { kind: "user" as const, text: "hello from user" },
+          { kind: "agent" as const, text: "hello from agent" },
+        ],
+      ],
+    ]),
+  );
+  const rows = renderScreen(view.snapshot(), 50, 10).split("\n");
+  assert.match(rows[2] ?? "", /^ {19}hello from user│/);
+  assert.match(rows[3] ?? "", /^hello from agent {18}│/);
+  assert.doesNotMatch(rows.slice(1, 4).join("\n"), /You:|Assistant:/);
+});
+
+test("multi-line messages wrap and retain alignment at narrow terminal widths", () => {
+  const view = new SupervisorViewModel(
+    [agents[0]],
+    new Map([
+      [
+        "main",
+        [{ kind: "user" as const, text: "first explicit line\nsecond line wraps right here" }],
+      ],
+    ]),
+  );
+  const rows = renderScreen(view.snapshot(), 36, 12).split("\n");
+  assert.ok(rows.every((row) => row.length <= 36));
+  assert.match(rows[2] ?? "", /^ {6}first explicit line│/);
+  assert.match(rows[3] ?? "", /^ {2}second line wraps right│/);
+  assert.match(rows[4] ?? "", /^ {21}here│/);
 });

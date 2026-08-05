@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AgentProfile } from "../domain/index.js";
+import type { TranscriptEntry } from "../domain/transcript.js";
 import type { AgentEvent, AgentRuntime } from "../runtimes/types.js";
 import type { Persistence, StoredSession } from "../storage/types.js";
 import { MainAgentController } from "./controller.js";
@@ -64,9 +65,9 @@ export class MainSession {
     return timer;
   }
 
-  transcript(): string[] {
-    const lines = this.stored.compaction
-      ? [`Conversation summary: ${this.stored.compaction.summary}`]
+  transcript(): TranscriptEntry[] {
+    const lines: TranscriptEntry[] = this.stored.compaction
+      ? [{ kind: "status", text: `Conversation summary: ${this.stored.compaction.summary}` }]
       : [];
     for (const { event } of this.persistence.events(this.stored.id)) {
       const line = transcriptLine(event);
@@ -88,9 +89,9 @@ export class MainSession {
   }
 }
 
-export function transcriptLine(event: AgentEvent): string | undefined {
-  if (event.type === "user-message") return `You: ${event.text}`;
-  if (event.type === "text") return `Assistant: ${event.text}`;
-  if (event.type === "failed") return `Assistant error: ${event.message}`;
+export function transcriptLine(event: AgentEvent): TranscriptEntry | undefined {
+  if (event.type === "user-message") return { kind: "user", text: event.text };
+  if (event.type === "text") return { kind: "agent", text: event.text };
+  if (event.type === "failed") return { kind: "status", text: `Error: ${event.message}` };
   return undefined;
 }

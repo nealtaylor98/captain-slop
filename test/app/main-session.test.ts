@@ -27,7 +27,10 @@ test("main session persists user and streamed assistant messages and resumes the
     const secondStore = new LocalStore(path);
     await secondStore.open();
     const reopened = await MainSession.open(secondStore, runtime, profile, () => 200);
-    assert.deepEqual(reopened.transcript(), ["You: hello", "Assistant: hi back"]);
+    assert.deepEqual(reopened.transcript(), [
+      { kind: "user", text: "hello" },
+      { kind: "agent", text: "hi back" },
+    ]);
     await reopened.send("continue");
     assert.equal(secondStore.latestSession()?.runtimeSessionId, "fake-1");
   } finally {
@@ -48,7 +51,9 @@ test("restored transcript starts with its compaction summary", async () => {
       compaction: { compactedAt: 2, summary: "We previously fixed login." },
     });
     const session = await MainSession.open(store, new FakeRuntime(), profile);
-    assert.deepEqual(session.transcript(), ["Conversation summary: We previously fixed login."]);
+    assert.deepEqual(session.transcript(), [
+      { kind: "status", text: "Conversation summary: We previously fixed login." },
+    ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

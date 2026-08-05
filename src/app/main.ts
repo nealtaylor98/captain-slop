@@ -74,14 +74,15 @@ async function run(): Promise<void> {
   transcripts.set("main", session.transcript());
   view = new SupervisorViewModel(agents, transcripts);
   ui = new TerminalUi(view, (message) => {
-    (transcripts.get("main") ?? []).push(`You: ${message}`);
+    (transcripts.get("main") ?? []).push({ kind: "user", text: message });
     ui?.refresh();
     void session
       .send(message)
       .catch((error: unknown) => {
-        (transcripts.get("main") ?? []).push(
-          `Assistant error: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        (transcripts.get("main") ?? []).push({
+          kind: "status",
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        });
       })
       .finally(() => {
         view.setAwaitingResponse(false);

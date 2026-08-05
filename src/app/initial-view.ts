@@ -1,4 +1,5 @@
 import type { AgentInstance } from "../domain/index.js";
+import type { TranscriptEntry } from "../domain/transcript.js";
 
 export function initialAgents(demo: boolean, now = Date.now()): AgentInstance[] {
   const main: AgentInstance = {
@@ -28,9 +29,9 @@ export function initialAgents(demo: boolean, now = Date.now()): AgentInstance[] 
   ];
 }
 
-export function initialTranscripts(demo: boolean): Map<string, string[]> {
-  const transcripts = new Map<string, string[]>([
-    ["main", ["Assistant: Ready to supervise coding agents."]],
+export function initialTranscripts(demo: boolean): Map<string, (TranscriptEntry | string)[]> {
+  const transcripts = new Map<string, (TranscriptEntry | string)[]>([
+    ["main", [{ kind: "agent", text: "Ready to supervise coding agents." }]],
   ]);
   if (demo)
     transcripts.set("worker-1", [

@@ -95,3 +95,47 @@ test("scheduler retains a runtime session id discovered during the first streame
   await scheduler.idle();
   assert.equal(worker.runtimeSessionId, "native-session");
 });
+
+test("scheduler routes and buffers fake worker progress in order through completion", async () => {
+  const routed: string[] = [];
+  const runtime = new FakeRuntime({
+    timer: [
+      { type: "text", text: "5 seconds" },
+      { type: "text", text: "10 seconds" },
+      { type: "text", text: "15 seconds" },
+      { type: "text", text: "20 seconds" },
+      { type: "completed", summary: "done" },
+    ],
+  });
+  const scheduler = new WorkerScheduler({
+    runtimes: new Map([["fake", runtime]]),
+    profiles: [profile],
+    globalTools: [],
+    concurrency: 1,
+    onEvent: (_worker, event) => {
+      if (event.type === "text") routed.push(event.text);
+    },
+  });
+  const worker = scheduler.spawn("session", "researcher", "timer");
+  await scheduler.idle();
+  assert.deepEqual(routed, ["5 seconds", "10 seconds", "15 seconds", "20 seconds"]);
+  assert.deepEqual(
+    scheduler.events(worker.id).map((event) => event.type),
+    ["text", "text", "text", "text", "completed"],
+  );
+  assert.equal(worker.status, "completed");
+});
+
+test("scheduler routes and buffers fake worker failures", async () => {
+  const runtime = new FakeRuntime({ timer: [{ type: "failed", message: "boom" }] });
+  const scheduler = new WorkerScheduler({
+    runtimes: new Map([["fake", runtime]]),
+    profiles: [profile],
+    globalTools: [],
+    concurrency: 1,
+  });
+  const worker = scheduler.spawn("session", "researcher", "timer");
+  await scheduler.idle();
+  assert.deepEqual(scheduler.events(worker.id), [{ type: "failed", message: "boom" }]);
+  assert.equal(worker.status, "failed");
+});

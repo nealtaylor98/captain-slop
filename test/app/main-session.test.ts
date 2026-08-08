@@ -83,6 +83,108 @@ test("retention runs on startup and once per scheduled day", async () => {
   assert.ok(timer);
 });
 
+test("reopening a session restores received native worker activity separately", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
+  try {
+    const path = join(dir, "state.json");
+    const firstStore = new LocalStore(path);
+    await firstStore.open();
+    const runtime = new FakeRuntime({
+      delegate: [
+        { type: "worker-started", workerId: "worker-thread", name: "timer", startedAt: 1 },
+        {
+          type: "worker-event",
+          workerId: "worker-thread",
+          event: { type: "text", text: "5 seconds" },
+        },
+        {
+          type: "worker-event",
+          workerId: "worker-thread",
+          event: { type: "completed", summary: "done" },
+        },
+        { type: "completed", summary: "main done" },
+      ],
+    });
+    const first = await MainSession.open(firstStore, runtime, profile, () => 100);
+    await first.send("delegate");
+
+    const restoredStore = new LocalStore(path);
+    await restoredStore.open();
+    const restored = await MainSession.open(restoredStore, runtime, profile, () => 200);
+    assert.deepEqual(restored.workerEvents(), [
+      { type: "worker-started", workerId: "worker-thread", name: "timer", startedAt: 1 },
+      {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "5 seconds" },
+      },
+      {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "completed", summary: "done" },
+      },
+    ]);
+    assert.deepEqual(restored.transcript(), [{ kind: "user", text: "delegate" }]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("restored worker activity excludes main replies inherited by old child rollouts", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
+  try {
+    const store = new LocalStore(join(dir, "state.json"));
+    await store.open();
+    const session = await MainSession.open(store, new FakeRuntime(), profile, () => 100);
+    const stored = store.latestSession();
+    assert.ok(stored);
+    await store.appendEvent(stored.id, {
+      at: 1,
+      agentId: "main",
+      event: { type: "text", text: "Hello! What would you like to work on?" },
+    });
+    await store.appendEvent(stored.id, {
+      at: 2,
+      agentId: "worker-thread",
+      event: {
+        type: "worker-started",
+        workerId: "worker-thread",
+        name: "timer",
+        startedAt: 2,
+      },
+    });
+    await store.appendEvent(stored.id, {
+      at: 3,
+      agentId: "worker-thread",
+      event: {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "Hello! What would you like to work on?" },
+      },
+    });
+    await store.appendEvent(stored.id, {
+      at: 4,
+      agentId: "worker-thread",
+      event: {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "Uptime: approximately 5 seconds." },
+      },
+    });
+
+    assert.deepEqual(session.workerEvents(), [
+      { type: "worker-started", workerId: "worker-thread", name: "timer", startedAt: 2 },
+      {
+        type: "worker-event",
+        workerId: "worker-thread",
+        event: { type: "text", text: "Uptime: approximately 5 seconds." },
+      },
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("main turns emit correlated metadata without message bodies", async () => {
   const dir = await mkdtemp(join(tmpdir(), "captain-slop-"));
   try {

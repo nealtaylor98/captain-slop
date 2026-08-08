@@ -29,6 +29,22 @@ export class SupervisorViewModel {
     this.awaitingResponse = awaiting;
   }
   handleRuntimeEvent(event: AgentEvent): void {
+    if (event.type === "worker-event") {
+      const worker = this.agents.find((agent) => agent.id === event.workerId);
+      if (!worker) return;
+      const transcript = this.transcripts.get(event.workerId) ?? [];
+      transcript.push(workerEventLine(event.event));
+      this.transcripts.set(event.workerId, transcript);
+      if (event.event.type === "completed") {
+        worker.status = "completed";
+        worker.finishedAt = Date.now();
+      }
+      if (event.event.type === "failed") {
+        worker.status = "failed";
+        worker.finishedAt = Date.now();
+      }
+      return;
+    }
     if (event.type !== "worker-started" || this.agents.some((agent) => agent.id === event.workerId))
       return;
     const ordinal =
@@ -60,6 +76,27 @@ export class SupervisorViewModel {
       this.awaitingResponse = true;
       sendToMain(message);
     }
+  }
+}
+
+function workerEventLine(event: Extract<AgentEvent, { type: "worker-event" }>["event"]): string {
+  switch (event.type) {
+    case "text":
+      return `Worker: ${event.text}`;
+    case "activity":
+      return `Activity: ${event.message}`;
+    case "tool-requested":
+      return `Tool requested: ${event.tool} — ${event.reason}`;
+    case "tool-started":
+      return `Tool started: ${event.tool}`;
+    case "tool-finished":
+      return `Tool finished: ${event.tool} — ${event.result}`;
+    case "warning":
+      return `Warning: ${event.message}`;
+    case "completed":
+      return `Completed: ${event.summary}`;
+    case "failed":
+      return `Failed: ${event.message}`;
   }
 }
 

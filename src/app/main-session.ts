@@ -85,6 +85,30 @@ export class MainSession {
     return lines;
   }
 
+  workerEvents(): AgentEvent[] {
+    const earlierMainReplies = new Set<string>();
+    const workerEvents: AgentEvent[] = [];
+    for (const { event } of this.persistence.events(this.stored.id)) {
+      if (event.type === "text") {
+        earlierMainReplies.add(event.text);
+        continue;
+      }
+      if (event.type === "worker-started") {
+        workerEvents.push(event);
+        continue;
+      }
+      if (event.type !== "worker-event") continue;
+      const text =
+        event.event.type === "text"
+          ? event.event.text
+          : event.event.type === "completed"
+            ? event.event.summary
+            : undefined;
+      if (!text || !earlierMainReplies.has(text)) workerEvents.push(event);
+    }
+    return workerEvents;
+  }
+
   async send(message: string): Promise<void> {
     const context: LogContext = {
       appSessionId: this.stored.id,
@@ -112,7 +136,9 @@ export class MainSession {
 
   private async record(event: AgentEvent, context?: LogContext): Promise<void> {
     const at = this.clock();
-    await this.persistence.appendEvent(this.stored.id, { at, agentId: "main", event });
+    const agentId =
+      event.type === "worker-started" || event.type === "worker-event" ? event.workerId : "main";
+    await this.persistence.appendEvent(this.stored.id, { at, agentId, event });
     this.stored.updatedAt = at;
     await this.persistence.saveSession(this.stored);
     await this.logger?.debug(

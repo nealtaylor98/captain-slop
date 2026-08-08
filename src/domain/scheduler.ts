@@ -14,6 +14,7 @@ export interface SchedulerOptions {
   globalTools: ToolName[];
   concurrency: number;
   onReport?: (report: WorkerReport) => void;
+  onEvent?: (worker: AgentInstance, event: AgentEvent) => void;
 }
 
 export class WorkerScheduler {
@@ -106,6 +107,7 @@ export class WorkerScheduler {
           return;
         }
         this.eventsByWorker.get(item.id)!.push(event);
+        this.options.onEvent?.(item, event);
         if (event.type === "approval-needed")
           item.status = transitionStatus(item.status, "waiting-for-approval");
         if (event.type === "completed")
